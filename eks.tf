@@ -39,7 +39,7 @@ resource "aws_iam_role_policy_attachment" "cluster_policy_attachment" {
 resource "aws_eks_cluster" "cluster1" {
   name = "cluster"
   vpc_config{
-    subnet_ids = ["subnet-0b9025e22d7e25f49", "subnet-06332970fe73ef540", "subnet-083695ab3c126af08"]
+    subnet_ids = ["subnet-0b9025e22d7e25f49", "subnet-06332970fe73ef540"]
     security_group_ids = [
       "sg-01be39ca928b458c1"]
   }
@@ -90,9 +90,10 @@ resource "aws_iam_role_policy_attachment" "node_ecr_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 
-##minimal policy
-
-
+resource "aws_iam_role_policy_attachment" "AmazonEKSWorkerNodeMinimalPolicy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodeMinimalPolicy"
+  role = aws_iam_role.node_group_role.name
+}
 
 
 
@@ -100,7 +101,7 @@ resource "aws_eks_node_group" "group1" {
     cluster_name = aws_eks_cluster.cluster1.name
     node_group_name = "group1"
     node_role_arn = aws_iam_role.node_group_role.arn
-    subnet_ids = ["subnet-0b9025e22d7e25f49", "subnet-06332970fe73ef540", "subnet-083695ab3c126af08"]
+    subnet_ids = ["subnet-0b9025e22d7e25f49", "subnet-06332970fe73ef540"]
     instance_types = ["c7i-flex.large"]
     scaling_config {
         desired_size = 2
@@ -117,6 +118,28 @@ resource "aws_eks_node_group" "group1" {
     ]
 }
 
+resource "aws_eks_access_entry" "node" {
+  cluster_name  = aws_eks_cluster.cluster1.name
+  principal_arn = aws_iam_role.node_group_role.arn
+  type          = "EC2_LINUX"
+
+  depends_on = [aws_eks_cluster.cluster1]
+}
+
+
+
+resource "aws_eks_access_policy_association" "node_policy" {
+  cluster_name  = aws_eks_cluster.cluster1.name
+  principal_arn = aws_iam_role.node_group_role.arn
+
+  policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSWorkerNodePolicy"
+
+  access_scope {
+    type = "cluster"
+  }
+
+  depends_on = [aws_eks_access_entry.node]
+}
 
 
 
@@ -126,8 +149,6 @@ resource "aws_eks_access_entry" "admin" {
   type          = "STANDARD"
   depends_on = [aws_eks_cluster.cluster1]
 }
-
-
 
 
 
