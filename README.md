@@ -167,17 +167,21 @@ Terraform is executed through Jenkins pipeline.
 ```groovy
 pipeline {
     agent any
-
     stages {
-        stage('Terraform Init') {
+        stage('pull') {
             steps {
-                sh 'terraform init'
+                git branch: 'main', url: 'https://github.com/Nimish999/Jenkins-Project.git'
             }
         }
-
-        stage('Terraform Apply') {
+        
+        stage('Deploy') {
             steps {
-                sh 'terraform apply -auto-approve'
+                withCredentials([aws(accessKeyVariable: 'AWS_ACCESS_KEY_ID', credentialsId: 'aws-cred', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                sh '''terraform init
+                terraform validate
+                terraform plan  
+                terraform apply --auto-approve'''
+}
             }
         }
     }
@@ -315,6 +319,7 @@ pipeline {
 # 🌐 Step 10: Access Application
 
 ```bash
+kubectl get pods
 kubectl get svc
 ```
 
